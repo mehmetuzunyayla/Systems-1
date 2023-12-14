@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Explorer Linux</title>
+    <script src="/scripts/file_operations.js"></script>
+</head>
+<body>
+    <h1>Files</h1>
+    <div id="actions">
+        <button id="create-directory-btn">Create Directory</button>
+        {% include "create_directory.html" %}
+        <button id="create-file-btn">Create File</button>
+        <button id="copy-file-btn">Copy File</button>
+        <button id="move-file-btn">Move File</button>
+        <button id="edit-file-btn">Edit File</button>
+        <button id="change-permissions-btn">Change Permissions</button>
+        <!-- Additional buttons for user management and access control (optional) -->
+    </div>
+    <ul id="file-list">
+        {% for filename in files %}
+            <li><a href="/download/{{ filename }}" onclick="confirmDownload('{{ filename }}')">{{ filename }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

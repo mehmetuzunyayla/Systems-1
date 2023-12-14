@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Explorer Linux</title>
+    <script src="/scripts/file_operations.js"></script>
+</head>
+<body>
+    <h1>Files</h1>
+    <div id="actions">
+        <button id="create-directory-btn">Create Directory</button>
+        <form action="/create-directory" method="POST" onsubmit="return validateForm(this)">
+            <label for="directory_name">Directory Name:</label>
+            <input type="text" id="directory_name" name="directory_name" required>
+            <button type="submit">Create</button>
+        </form>
+    </div>
+    <ul id="file-list">
+        </ul>
+</body>
+</html>
