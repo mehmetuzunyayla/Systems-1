@@ -1,3 +1,4 @@
+import os
 from flask import Flask, flash, render_template, send_file, redirect, request, send_from_directory, jsonify
 import paramiko
 from io import StringIO
@@ -6,12 +7,16 @@ from file_operations import *
 
 app = Flask(__name__)
 
+directory = None
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/connect', methods=['POST'])
 def connect():
+    global directory
+
     server_address = request.form['server_address']
     username = request.form['username']
     password = request.form['password']
@@ -26,7 +31,7 @@ def connect():
         sftp_client = ssh_client.open_sftp()
 
         # List files in the desired directory
-        directory = '/home/mehmet' 
+        directory = get_user_home_directory(ssh_client) 
         files_list = sftp_client.listdir(directory)
 
         # Store file list in a buffer
@@ -43,23 +48,37 @@ def connect():
         # Handle connection errors
         return render_template('error.html', error=str(error))
 
+@app.route('/create-directory')
+def create_directory_page():
+    return render_template('create_directory.html', directory=directory)
 
 @app.route('/create-directory', methods=['POST'])
 def create_directory():
-    directory_name = request.form['directory_name']
-    parent_directory = '/home/mehmet'  # Update this as needed
+    global directory
 
     try:
-        # Create the directory
-        create_directory(directory_name, parent_directory)
+        # Get the directory name from the request
+        directory_name = request.json.get('directoryName')
 
-        # Success message and redirect
-        flash('Directory created successfully!', 'success')
-        return redirect('/files')
+        # Check if the directory already exists
+        target_directory = os.path.join(directory, directory_name)
+        if os.path.exists(target_directory):
+            return jsonify(success=False, error="Directory already exists")
+
+        # Create the directory in the user's home directory
+        os.makedirs(target_directory)
+
+        # Return success response to the client
+        return jsonify(success=True)
+
     except Exception as error:
-        # Handle error and display message
-        flash(f'Error creating directory: {error}', 'error')
-        return render_template('error.html', error=str(error))
-  
+        # Print the full traceback to the console for debugging
+        import traceback
+        print(f"Error creating directory: {error}")
+        traceback.print_exc()
+
+        # Return a generic error response to the client
+        return jsonify(success=False, error="Failed to create the directory. Please try again.")
+
 if __name__ == '__main__':
     app.run(debug=True)

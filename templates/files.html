@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>File Explorer Linux</title>
-    <script src="/scripts/file_operations.js"></script>
+    <script src="/static/scripts/file_operations.js"></script>
 </head>
 <body>
     <h1>Files</h1>
     <div id="actions">
-        <button id="create-directory-btn">Create Directory</button>
+        <button type = "submit", id="create-directory-btn", onclick="openCreateDirectoryPage()">Create Directory</button>
         <button id="create-file-btn">Create File</button>
         <button id="copy-file-btn">Copy File</button>
         <button id="move-file-btn">Move File</button>
