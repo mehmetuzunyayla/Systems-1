@@ -7,46 +7,74 @@ function openPath(path) {
         return response.json();
       })
       .then(data => {
-        const fileContentsDiv = document.getElementById('file-contents');
-        fileContentsDiv.innerHTML = '';  // Clear previous contents
-
         if (data.error) {
           alert('Error: ' + data.error);
         } else if (data.type === 'file') {
-          // Display the file name
-          const fileName = document.createElement('h2');
-          fileName.textContent = 'File: ' + path.split('/').pop();  // Extracts file name from path
-          fileContentsDiv.appendChild(fileName);
-
-          // Display the file contents
-          const fileContent = document.createElement('pre');  // 'pre' maintains whitespace
-          fileContent.textContent = data.contents;
-          fileContentsDiv.appendChild(fileContent);
+          // Handle file content display
+          displayFileContents(path, data.contents);
         } else if (data.type === 'directory') {
-          // If it's a directory, list its contents
-          const fileList = document.getElementById('file-list');
-          fileList.innerHTML = ''; // Clear current list
-          data.contents.forEach(item => {
-            const listItem = document.createElement('li');
-            const link = document.createElement('a');
-            link.href = "#";
-            link.className = "file-link";
-            link.textContent = item;
-            link.setAttribute('data-path', path + "/" + item);
-            link.addEventListener('click', function(event) {
-              event.preventDefault(); // Prevent the default link behavior
-              openPath(this.getAttribute('data-path'));
-            });
-            listItem.appendChild(link);
-            fileList.appendChild(listItem);
-          });
+          // Update the file list for the directory
+          updateFileList(data.contents, data.current_path);
         }
       })
       .catch(error => {
         console.error('Failed to open path:', error);
         alert('Failed to open path: ' + error);
       });
-}
+  }
+  
+  function displayFileContents(filePath, contents) {
+    const fileContentsDiv = document.getElementById('file-contents');
+    fileContentsDiv.innerHTML = '';  // Clear previous contents
+    
+    // Display the file name
+    const fileName = document.createElement('h2');
+    fileName.textContent = 'File: ' + filePath.split('/').pop();
+    fileContentsDiv.appendChild(fileName);
+    
+    // Display the file contents
+    const fileContent = document.createElement('pre');
+    fileContent.textContent = contents;
+    fileContentsDiv.appendChild(fileContent);
+  }
+  
+  function updateFileList(files, currentPath) {
+    // Update the current path in the frontend
+    document.body.setAttribute('data-home-path', currentPath);
+  
+    // Update the file list to show the contents of the directory
+    const fileList = document.getElementById('file-list');
+    fileList.innerHTML = ''; // Clear the current list
+    files.forEach(item => {
+      const listItem = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = "#";
+      link.className = "file-link";
+      link.textContent = item;
+      link.setAttribute('data-path', item); // Don't prepend current_path if it's already included.
+      link.addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent the default link behavior
+        openPath(this.getAttribute('data-path'));
+      });
+      // Create a delete button for each item
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.onclick = function() {
+        deleteItem( "/" + item); // Pass the full path to the deleteItem function
+      };
+
+      listItem.appendChild(link);
+      listItem.appendChild(deleteBtn); // Append the delete button next to the link
+      fileList.appendChild(listItem);
+    });
+  
+    // Update the current path display element, if present
+    const currentPathDisplay = document.getElementById('current-path-display');
+    if (currentPathDisplay) {
+      currentPathDisplay.textContent = 'Current Path: ' + currentPath;
+    }
+  }
+  
 function createDirectory() {
     const directoryName = document.getElementById('directory-name').value;
     fetch('/create_directory', {
@@ -148,10 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
     // Event listener for the Go to Home button
-    const goHomeBtn = document.getElementById('go-home-btn');
-    if (goHomeBtn) {
-        goHomeBtn.addEventListener('click', function() {
-            window.location.href = '/home';  // Redirect to the /home route
-        });
-    }
+    document.getElementById('go-home-btn').addEventListener('click', function() {
+        window.location.href = '/reset_path';
+    });
 });

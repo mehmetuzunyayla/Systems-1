@@ -7,6 +7,7 @@
 </head>
 <body data-home-path="{{ session['ssh_details']['current_path'] }}">
     <h1>Files</h1>
+    <p id="current-path-display">Current Path: {{ session['ssh_details']['current_path'] }}</p>
     <div id="actions">
         <button id="go-home-btn" class="button">Home</button>
         <button id="create-directory-btn">Create Directory</button>
@@ -27,16 +28,19 @@
     </ul>
     <div id="file-contents"></div>
     <script>
+        // Event listener for the Create Directory button
         document.getElementById('create-directory-btn').addEventListener('click', function() {
             const currentPath = document.body.getAttribute('data-home-path');
             window.location.href = '/create_directory?path=' + encodeURIComponent(currentPath);
         });
-
+    
+        // Event listener for the Create File button
         document.getElementById('create-file-btn').addEventListener('click', function() {
             const currentPath = document.body.getAttribute('data-home-path');
             window.location.href = '/create_file?path=' + encodeURIComponent(currentPath);
         });
-    
     </script>
+    
+    
 </body>
 </html>
