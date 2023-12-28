@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from flask import session
 import paramiko
 
 def get_user_home_directory(ssh_client):

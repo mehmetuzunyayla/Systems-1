@@ -3,7 +3,7 @@ import logging
 from stat import S_ISDIR
 logging.basicConfig(level=logging.DEBUG)
 import os
-from flask import Flask, flash, render_template, send_file, redirect, request, send_from_directory, jsonify, session
+from flask import Flask, flash, render_template, send_file, redirect, request, send_from_directory, jsonify, session, url_for
 from io import StringIO
 
 from file_operations import *
@@ -71,7 +71,10 @@ def open():
             file_attr = sftp_client.stat(full_path)
             if S_ISDIR(file_attr.st_mode):
                 files = sftp_client.listdir(full_path)
-                return jsonify({'type': 'directory', 'contents': files})
+                ssh_details['current_path'] = full_path
+                session.modified = True
+                # Return a JSON response with directory contents
+                return jsonify({'type': 'directory', 'contents': files, 'current_path': full_path})
             else:
                 with sftp_client.open(full_path, 'rb') as file:
                     content = file.read()
@@ -95,6 +98,7 @@ def home():
         return render_template('error.html', error='SSH details not found in session')
 
     try:
+
         with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
             base_path = ssh_details['current_path']
             files_list = [f for f in sftp_client.listdir(base_path) if not f.startswith('.')]
@@ -102,39 +106,42 @@ def home():
 
     except Exception as e:
         return render_template('error.html', error=str(e))
-    
-@app.route('/create_directory', methods=['GET', 'POST'])
-def create_directory():
+
+@app.route('/create_directory', methods=['GET'])
+def display_create_directory():
     ssh_details = session.get('ssh_details')
     if not ssh_details:
         return render_template('error.html', error='SSH details not found in session')
 
-    if request.method == 'POST':
-        try:
-            directory_name = request.json.get('directory_name')
-            if not directory_name:
-                return jsonify({'error': 'Directory name is required'}), 400
+    return render_template('create_directory.html')
+    
+@app.route('/create_directory', methods=['POST'])
+def create_directory():
+    ssh_details = session.get('ssh_details')
+    if not ssh_details:
+        return jsonify({'error': 'SSH details not found in session'}), 401
 
-            with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
-                current_path = ssh_details['current_path']
-                # Ensure directory name does not contain any path separator
-                safe_directory_name = os.path.basename(directory_name)
-                new_directory_path = os.path.join(current_path, safe_directory_name).replace('\\', '/')
-                print("New directory path:", new_directory_path)
+    try:
+        directory_name = request.json.get('directory_name')
+        if not directory_name:
+            return jsonify({'error': 'Directory name is required'}), 400
 
-                try:
-                    sftp_client.chdir(new_directory_path)  # Try to change to the directory
-                    return jsonify({'error': 'Directory already exists'}), 400
-                except IOError:
-                    # Directory does not exist, create it
-                    sftp_client.mkdir(new_directory_path)
-                    return jsonify({'success': 'Directory created successfully'})
+        with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
+            current_path = ssh_details['current_path']
+            safe_directory_name = os.path.basename(directory_name)
+            new_directory_path = os.path.join(current_path, safe_directory_name).replace('\\', '/')
+            print("New directory path:", new_directory_path)
 
-        except Exception as e:
-            app.logger.error(f'An error occurred: {e}')
-            return jsonify({'error': f'An error occurred while trying to create the directory: {str(e)}'}), 500
-    else:
-        return render_template('create_directory.html')
+            try:
+                sftp_client.chdir(new_directory_path)
+                return jsonify({'error': 'Directory already exists'}), 400
+            except IOError:
+                sftp_client.mkdir(new_directory_path)
+                return jsonify({'success': 'Directory created successfully'})
+
+    except Exception as e:
+        app.logger.error(f'An error occurred: {e}')
+        return jsonify({'error': f'An error occurred while trying to create the directory: {str(e)}'}), 500
 
 @app.route('/delete_item', methods=['POST'])
 def delete_item():
@@ -174,7 +181,6 @@ def display_create_file():
     current_path = request.args.get('path', ssh_details.get('current_path', ''))
     return render_template('create_file.html', current_path=current_path)
 
-
 @app.route('/create_file', methods=['POST'])
 def create_file():
     ssh_details = session.get('ssh_details')
@@ -200,6 +206,16 @@ def create_file():
     except Exception as e:
         app.logger.error(f'An error occurred: {e}')
         return jsonify({'error': f'An error occurred while trying to create the file: {e}'}), 500
+
+@app.route('/reset_path')
+def reset_path():
+    ssh_details = session.get('ssh_details')
+    if not ssh_details:
+        return redirect(url_for('index'))
+
+    ssh_details['current_path'] = '/home/' + ssh_details['username']
+    session.modified = True
+    return redirect(url_for('home'))
 
 if __name__ == '__main__':
     app.run(debug=True)

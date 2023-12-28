@@ -10,6 +10,7 @@
     <form id="create-directory-form">
         <label for="directory-name">Directory Name:</label>
         <input type="text" id="directory-name" name="directory-name" required>
+        <input type="hidden" id="current-path" name="current-path" value="{{ current_path }}">
         <button type="submit">Create</button>
     </form>
 
