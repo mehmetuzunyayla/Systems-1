@@ -7,10 +7,14 @@
 </head>
 <body>
     <h2>Create Directory</h2>
-    <form onsubmit="return createDirectory()">
+    <form id="create-directory-form">
         <label for="directory-name">Directory Name:</label>
         <input type="text" id="directory-name" name="directory-name" required>
         <button type="submit">Create</button>
     </form>
+
+    <script>
+        document.getElementById('create-directory-form').onsubmit = createDirectory;
+    </script>
 </body>
 </html>

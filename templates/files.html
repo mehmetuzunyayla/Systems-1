@@ -5,11 +5,12 @@
     <title>File Explorer Linux</title>
     <script src="/static/scripts/file_operations.js"></script>
 </head>
-<body>
+<body data-home-path="{{ session['ssh_details']['current_path'] }}">
     <h1>Files</h1>
     <div id="actions">
-        <button type = "submit", id="create-directory-btn", onclick="openCreateDirectoryPage()">Create Directory</button>
-        <button id="create-file-btn">Create File</button>
+        <button id="go-home-btn" class="button">Home</button>
+        <button id="create-directory-btn">Create Directory</button>
+        <button id="create-file-btn" data-current-path="{{ session['ssh_details']['current_path'] }}">Create File</button>
         <button id="copy-file-btn">Copy File</button>
         <button id="move-file-btn">Move File</button>
         <button id="edit-file-btn">Edit File</button>
@@ -18,8 +19,24 @@
     </div>
     <ul id="file-list">
         {% for filename in files %}
-            <li><a href="/download/{{ filename }}" onclick="confirmDownload('{{ filename }}')">{{ filename }}</a></li>
+            <li>
+                <a href="#" class="file-link" data-path="{{ session.current_path }}/{{ filename }}">{{ filename }}</a>
+                <button onclick="deleteItem('{{ filename }}')">Delete</button>
+            </li>
         {% endfor %}
     </ul>
+    <div id="file-contents"></div>
+    <script>
+        document.getElementById('create-directory-btn').addEventListener('click', function() {
+            const currentPath = document.body.getAttribute('data-home-path');
+            window.location.href = '/create_directory?path=' + encodeURIComponent(currentPath);
+        });
+
+        document.getElementById('create-file-btn').addEventListener('click', function() {
+            const currentPath = document.body.getAttribute('data-home-path');
+            window.location.href = '/create_file?path=' + encodeURIComponent(currentPath);
+        });
+    
+    </script>
 </body>
 </html>
