@@ -67,6 +67,7 @@ def open():
 
             full_path = os.path.join(base_path, relative_path)
             full_path = full_path.replace('\\', '/')
+            full_path = full_path.replace('//', '/')
 
             file_attr = sftp_client.stat(full_path)
             if S_ISDIR(file_attr.st_mode):
@@ -207,6 +208,64 @@ def create_file():
         app.logger.error(f'An error occurred: {e}')
         return jsonify({'error': f'An error occurred while trying to create the file: {e}'}), 500
 
+@app.route('/copy_item', methods=['POST'])
+def copy_item():
+    ssh_details = session.get('ssh_details')
+    if not ssh_details:
+        return jsonify({'error': 'SSH details not found in session'}), 401
+
+    try:
+        source_path = request.json.get('source')
+        destination_path = request.json.get('destination')
+
+        if not source_path or not destination_path:
+            return jsonify({'error': 'Source and destination paths are required'}), 400
+
+        with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
+            # Forming the command to copy files on the remote server
+            # Note: This assumes a Linux environment on the remote server
+            copy_command = f'cp -r {source_path} {destination_path}'
+            stdin, stdout, stderr = ssh_client.exec_command(copy_command)
+            exit_status = stdout.channel.recv_exit_status()  # Blocking call
+
+            if exit_status == 0:
+                return jsonify({'success': 'Item copied successfully', 'destination_path': destination_path})
+            else:
+                error_message = stderr.read().decode()
+                app.logger.error(f'Copy command failed on remote server: {error_message}')
+                return jsonify({'error': 'Copy command failed on remote server', 'details': error_message})
+
+    except Exception as e:
+        app.logger.error(f'An error occurred during the copy operation: {e}')
+        return jsonify({'error': f'An error occurred: {e}'}), 500
+
+@app.route('/move_item', methods=['POST'])
+def move_item():
+    ssh_details = session.get('ssh_details')
+    if not ssh_details:
+        return jsonify({'error': 'SSH details not found in session'}), 401
+
+    try:
+        source_path = request.json.get('source')
+        destination_path = request.json.get('destination')
+
+        if not source_path or not destination_path:
+            return jsonify({'error': 'Source and destination paths are required'}), 400
+
+        with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
+            move_command = f'mv {source_path} {destination_path}'
+            stdin, stdout, stderr = ssh_client.exec_command(move_command)
+            exit_status = stdout.channel.recv_exit_status()
+
+            if exit_status == 0:
+                return jsonify({'success': 'Item moved successfully','destination_path':destination_path})
+            else:
+                error_message = stderr.read().decode()
+                return jsonify({'error': 'Move command failed on remote server', 'details': error_message})
+
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {e}'}), 500
+
 @app.route('/reset_path')
 def reset_path():
     ssh_details = session.get('ssh_details')
@@ -216,6 +275,19 @@ def reset_path():
     ssh_details['current_path'] = '/home/' + ssh_details['username']
     session.modified = True
     return redirect(url_for('home'))
+
+@app.route('/reset_session_path', methods=['POST'])
+def reset_session_path():
+    ssh_details = session.get('ssh_details')
+    if not ssh_details:
+        return jsonify({'error': 'SSH details not found in session'}), 401
+
+    # Reset the path to a default value, like the user's home directory
+    default_path = '/'  # Modify as needed
+    ssh_details['current_path'] = default_path
+    session.modified = True
+    return jsonify({'success': 'Session path reset to default', 'default_path': default_path})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
