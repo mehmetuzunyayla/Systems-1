@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>File Explorer Linux</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/files.css">
     <script src="/static/scripts/file_operations.js"></script>
 </head>
 <body data-home-path="{{ session['ssh_details']['current_path'] }}">
@@ -12,17 +13,21 @@
         <button id="go-home-btn" class="button">Home</button>
         <button id="create-directory-btn">Create Directory</button>
         <button id="create-file-btn" data-current-path="{{ session['ssh_details']['current_path'] }}">Create File</button>
-        <button id="copy-file-btn">Copy File</button>
-        <button id="move-file-btn">Move File</button>
-        <button id="edit-file-btn">Edit File</button>
         <button id="change-permissions-btn">Change Permissions</button>
-        <!-- Additional buttons for user management and access control (optional) -->
     </div>
     <ul id="file-list">
         {% for filename in files %}
-            <li>
+            <li class="file-item">
                 <a href="#" class="file-link" data-path="{{ session.current_path }}/{{ filename }}">{{ filename }}</a>
-                <button onclick="deleteItem('{{ filename }}')">Delete</button>
+                <div class="context-menu">
+                    <button class="context-menu-button" onclick="showContextMenu(event)">...</button>
+                    <div class="menu-content" style="display:none;">
+                        <button onclick="deleteItem('{{ filename }}')">Delete</button>
+                        <button onclick="copyItem('{{ filename }}')">Copy</button>
+                        <button onclick="moveItem('{{ filename }}')">Move</button>
+                        <button onclick="editFile('{{ filename }}')">Edit File</button>
+                    </div>      
+                </div>
             </li>
         {% endfor %}
     </ul>
@@ -40,7 +45,6 @@
             window.location.href = '/create_file?path=' + encodeURIComponent(currentPath);
         });
     </script>
-    
-    
+        
 </body>
 </html>
