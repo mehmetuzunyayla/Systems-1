@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit File</title>
+    <script src="/static/scripts/file_operations.js"></script>
+</head>
+<body>
+    <div id="editFileModal" class="edit-modal">
+        <div class="edit-modal-content">
+            <span id="closeEditModal" class="close">&times;</span>
+            <h2>Edit File</h2>
+            <form id="editForm">
+                <input type="hidden" id="editFilePath" value="{{ file_path }}">
+                <textarea id="editTextArea">{{ contents }}</textarea>
+                <button type="submit">Save</button>
+                <button type="button" onclick="window.location.href='/home'">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var editForm = document.getElementById('editForm');
+        if(editForm) {
+            editForm.onsubmit = function(e) {
+                e.preventDefault(); // Prevent the default form submit action
+                saveChanges(); // Call your save function
+            };
+        }
+    });
+    </script>
+</body>
+</html>
