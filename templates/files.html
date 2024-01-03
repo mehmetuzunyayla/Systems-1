@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>File Explorer Linux</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Web Based File Explorer </title>
     <link rel="stylesheet" type="text/css" href="/static/styles/files.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="/static/scripts/file_operations.js"></script>
 </head>
 <body data-home-path="{{ session['ssh_details']['current_path'] }}">
-    <h1>Files</h1>
+    <h1>File Explorer</h1>
     <p id="current-path-display">Current Path: {{ session['ssh_details']['current_path'] }}</p>
     <div id="actions">
         <button id="go-home-btn" class="button">Home</button>
