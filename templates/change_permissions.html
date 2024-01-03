@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Change Permissions</title>
+    <script src="/static/scripts/file_operations.js"></script>
+</head>
+<body>
+    <div id="changePermissionsModal" class="change-permissions-modal">
+        <div class="change-permissions-modal-content">
+            <span onclick="window.location.href='/home'" class="close">&times;</span>
+            <h2>Change File Permissions</h2>
+            <form id="changePermissionsForm">
+                <input type="hidden" id="permissionsFilePath" value="{{ file_path }}">
+                <label for="permissionsInput">Permissions (e.g., 644):</label>
+                <input type="text" id="permissionsInput" name="permissions" value="{{ current_permissions }}">
+                <button type="submit">Change</button>
+                <button type="button" onclick="window.location.href='/home'">Cancel</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var changePermissionsForm = document.getElementById('changePermissionsForm');
+        if(changePermissionsForm) {
+            changePermissionsForm.onsubmit = function(e) {
+                e.preventDefault(); // Prevent the default form submit action
+                changeFilePermissions(); // Call your change permissions function
+            };
+        }
+    });
+    </script>
+</body>
+</html>

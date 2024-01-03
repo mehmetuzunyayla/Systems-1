@@ -13,7 +13,6 @@
         <button id="go-home-btn" class="button">Home</button>
         <button id="create-directory-btn">Create Directory</button>
         <button id="create-file-btn" data-current-path="{{ session['ssh_details']['current_path'] }}">Create File</button>
-        <button id="change-permissions-btn">Change Permissions</button>
     </div>
     <ul id="file-list">
         {% for filename in files %}
@@ -26,6 +25,7 @@
                         <button onclick="copyItem('{{ filename }}')">Copy</button>
                         <button onclick="moveItem('{{ filename }}')">Move</button>
                         <button onclick="editFile('{{ filename }}')">Edit File</button>
+                        <button onclick="changePermissions('{{filename}}')">Change Permissions</button>
                     </div>      
                 </div>
             </li>

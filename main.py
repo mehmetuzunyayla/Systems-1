@@ -1,7 +1,7 @@
 import base64
 import logging
 from stat import S_ISDIR
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 import os
 from flask import Flask, flash, render_template, send_file, redirect, request, send_from_directory, jsonify, session, url_for
 from io import StringIO
@@ -265,6 +265,81 @@ def move_item():
 
     except Exception as e:
         return jsonify({'error': f'An error occurred: {e}'}), 500
+
+@app.route('/edit_file', methods=['GET'])
+def edit_file():
+    file_path = request.args.get('file_path')
+    ssh_details = session.get('ssh_details')
+
+    if not ssh_details:
+        return render_template('error.html', error='SSH details not found in session')
+
+    try:
+        with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
+            with sftp_client.open(file_path, 'r') as file:
+                contents = file.read().decode('utf-8')  # Ensure text mode reading and decoding
+            return render_template('edit_file.html', file_path=file_path, contents=contents)
+    except Exception as e:
+        return render_template('error.html', error=str(e))
+
+@app.route('/save_edited_file', methods=['POST'])
+def save_edited_file():
+    ssh_details = session.get('ssh_details')
+    if not ssh_details:
+        return jsonify({'error': 'SSH details not found in session'}), 401
+
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'No data received'}), 400
+    print('Received data:', data)  # Debugging line
+
+    file_path = data.get('file_path')
+    content = data.get('content')       
+
+    try:
+        with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
+            with sftp_client.open(file_path, 'w') as file:
+                file.write(content)  # Ensure content is a string
+            return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {e}'}), 500
+
+@app.route('/change_permissions', methods=['GET'])
+def change_permissions():
+    file_path = request.args.get('file_path')
+    ssh_details = session.get('ssh_details')
+
+    if not ssh_details:
+        return render_template('error.html', error='SSH details not found in session')
+
+    try:
+        with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
+            # Fetch the current permissions
+            file_attr = sftp_client.stat(file_path)
+            current_permissions = oct(file_attr.st_mode)[-3:]  # Get the last three digits, which represent the file permissions
+            return render_template('change_permissions.html', file_path=file_path, current_permissions=current_permissions)
+    except Exception as e:
+        return render_template('error.html', error=str(e))
+
+@app.route('/set_permissions', methods=['POST'])
+def set_permissions():
+    ssh_details = session.get('ssh_details')
+    if not ssh_details:
+        return jsonify({'error': 'SSH details not found in session'}), 401
+
+    data = request.get_json()
+    file_path = data.get('file_path')
+    permissions = data.get('permissions')
+
+    try:
+        # Convert permissions to an octal number
+        numeric_permissions = int(permissions, 8)
+        with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
+            sftp_client.chmod(file_path, numeric_permissions)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {e}'}), 500
+
 
 @app.route('/reset_path')
 def reset_path():

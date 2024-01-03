@@ -79,39 +79,28 @@ function updateFileList(files, currentPath) {
       menuContent.className = 'menu-content';
       menuContent.style.display = 'none';
 
-      // Create delete button
-      const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = 'Delete';
-      deleteBtn.onclick = function() {
-          deleteItem(item); // Pass the full path to the deleteItem function
-      };
+        // Create action buttons using the createButton helper function
+        const deleteBtn = createButton('Delete', function() {
+            deleteItem(item);
+        });
+        const copyBtn = createButton('Copy', function() {
+            copyItem(item);
+        });
+        const moveBtn = createButton('Move', function() {
+            moveItem(item);
+        });
+        const editBtn = createButton('Edit File', function() {
+            editFile(item);
+        });
+        const changePermissionsBtn = createButton('Change Permissions', function() {
+            changePermissions(item); // This function needs to be implemented
+        });
 
-      // Create copy button
-      const copyBtn = document.createElement('button');
-      copyBtn.textContent = 'Copy';
-      copyBtn.onclick = function() {
-          copyItem(item); // Pass the full path to the copyItem function
-      };
-
-      // Create move button
-      const moveBtn = document.createElement('button');
-      moveBtn.textContent = 'Move';
-      moveBtn.onclick = function() {
-          moveItem(item); // Pass the full path to the moveItem function
-      };
-
-      // Create edit button
-      const editBtn = document.createElement('button');
-      editBtn.textContent = 'Edit File';
-      editBtn.onclick = function() {
-          editFile(item); // Pass the full path to the editFile function
-      };
-
-      // Append buttons to menu content
-      menuContent.appendChild(deleteBtn);
-      menuContent.appendChild(copyBtn);
-      menuContent.appendChild(moveBtn);
-      menuContent.appendChild(editBtn);
+        // Append buttons to menu content
+        [deleteBtn, copyBtn, moveBtn, editBtn, changePermissionsBtn].forEach(button => {
+            menuContent.appendChild(button);
+        });
+        
 
       // Append menu button and content to context menu container
       contextMenu.appendChild(menuButton);
@@ -332,6 +321,79 @@ function moveItem(filename) {
   }
 }
 
+function editFile(filename) {
+    const currentPath = document.body.getAttribute('data-home-path');
+    const filePath = currentPath + '/' + filename;
+    window.location.href = '/edit_file?file_path=' + encodeURIComponent(filePath);
+}
+
+function saveChanges() {
+    const filePath = document.getElementById('editFilePath').value;
+    const updatedContent = document.getElementById('editTextArea').value;
+    console.log('saveChanges called'); // Debugging line
+    console.log(filePath, updatedContent); // Debugging line
+
+    fetch('/save_edited_file', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            file_path: filePath,
+            content: updatedContent
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('File saved successfully.');
+            window.location.href = '/home'; // Or the appropriate path to go back to the file list
+        } else {
+            alert('Error saving file: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Failed to save the file:', error);
+        alert('Failed to save the file: ' + error);
+    });
+}
+
+function changePermissions(filename) {
+    const currentPath = document.body.getAttribute('data-home-path');
+    const filePath = currentPath + '/' + filename;
+    window.location.href = '/change_permissions?file_path=' + encodeURIComponent(filePath);
+}
+
+function changeFilePermissions() {
+    const filePath = document.getElementById('permissionsFilePath').value;
+    const permissions = document.getElementById('permissionsInput').value;
+
+    fetch('/set_permissions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            file_path: filePath,
+            permissions: permissions
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Permissions changed successfully.');
+            window.location.href = '/home'; // Redirect back to the home page or file list
+        } else {
+            alert('Error changing permissions: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Failed to change file permissions:', error);
+        alert('Failed to change file permissions: ' + error);
+    });
+}
+
+
 // Close the context menu when clicking outside of it
 window.addEventListener('click', function(e) {
   if (!e.target.matches('.context-menu button')) {
@@ -360,3 +422,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = '/reset_path';
     });
 });
+
+//Use this later
+function createButton(text, onClickFunction) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.onclick = onClickFunction;
+    return button;
+}
