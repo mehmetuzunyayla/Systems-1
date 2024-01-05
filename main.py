@@ -1,10 +1,7 @@
 import base64
-import logging
 from stat import S_ISDIR
-#logging.basicConfig(level=logging.DEBUG)
 import os
-from flask import Flask, flash, render_template, send_file, redirect, request, send_from_directory, jsonify, session, url_for
-from io import StringIO
+from flask import Flask, render_template, redirect, request, jsonify, session, url_for
 
 from file_operations import *
 
@@ -14,14 +11,18 @@ app.secret_key = 'rick'
 
 directory = None
 
+# This routes returns the index page.
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# This route is for connect and list the items in home.
+
 @app.route('/connect', methods=['POST'])
 def connect():
     global directory
-
+    # Taking data from website
     server_address = request.form['server_address']
     username = request.form['username']
     password = request.form['password']
@@ -34,20 +35,26 @@ def connect():
     }
 
     try:
+        # Connecting server using a helper function and listing the files.
+        # Defined in file_operations.py
         with get_ssh_sftp_client(server_address, username, password) as (ssh_client, sftp_client):
             # List files in the desired directory, excluding hidden files
-            directory = get_user_home_directory(ssh_client)  # Use ssh_client here
-            files_list = [f for f in sftp_client.listdir(directory) if not f.startswith('.')]
+            directory = get_user_home_directory(
+                ssh_client)  # Use ssh_client here
+            files_list = [f for f in sftp_client.listdir(
+                directory) if not f.startswith('.')]
 
             # Update session with the current path
             session['ssh_details']['current_path'] = directory
 
             # Render the files list page with retrieved data
             return render_template('files.html', files=files_list)
-    
+
     except Exception as error:
         # Handle connection errors
         return render_template('error.html', error=str(error))
+
+# This route is for open files and folders.
 
 @app.route('/open', methods=['GET'])
 def open():
@@ -65,11 +72,14 @@ def open():
             if not relative_path:
                 return jsonify({'error': 'No file path provided'}), 400
 
+            # Correcting the path
             full_path = os.path.join(base_path, relative_path)
             full_path = full_path.replace('\\', '/')
             full_path = full_path.replace('//', '/')
 
             file_attr = sftp_client.stat(full_path)
+
+            # Check the item if its a directory
             if S_ISDIR(file_attr.st_mode):
                 files = sftp_client.listdir(full_path)
                 ssh_details['current_path'] = full_path
@@ -77,6 +87,7 @@ def open():
                 # Return a JSON response with directory contents
                 return jsonify({'type': 'directory', 'contents': files, 'current_path': full_path})
             else:
+                # Doing the file reading process
                 with sftp_client.open(full_path, 'rb') as file:
                     content = file.read()
                     try:
@@ -92,6 +103,8 @@ def open():
         app.logger.error(f'An error occurred: {e}')
         return jsonify({'error': 'An error occurred while trying to open the file or directory'}), 500
 
+# This route is for return to the home directory.
+
 @app.route('/home')
 def home():
     ssh_details = session.get('ssh_details')
@@ -102,11 +115,14 @@ def home():
 
         with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
             base_path = ssh_details['current_path']
-            files_list = [f for f in sftp_client.listdir(base_path) if not f.startswith('.')]
+            files_list = [f for f in sftp_client.listdir(
+                base_path) if not f.startswith('.')]
             return render_template('files.html', files=files_list)
 
     except Exception as e:
         return render_template('error.html', error=str(e))
+
+# This route is returning create directory page.
 
 @app.route('/create_directory', methods=['GET'])
 def display_create_directory():
@@ -115,7 +131,9 @@ def display_create_directory():
         return render_template('error.html', error='SSH details not found in session')
 
     return render_template('create_directory.html')
-    
+
+# This route creates directory for user.
+
 @app.route('/create_directory', methods=['POST'])
 def create_directory():
     ssh_details = session.get('ssh_details')
@@ -127,10 +145,12 @@ def create_directory():
         if not directory_name:
             return jsonify({'error': 'Directory name is required'}), 400
 
+        # Doing connection with helper function and starting the directory create process
         with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
             current_path = ssh_details['current_path']
             safe_directory_name = os.path.basename(directory_name)
-            new_directory_path = os.path.join(current_path, safe_directory_name).replace('\\', '/')
+            new_directory_path = os.path.join(
+                current_path, safe_directory_name).replace('\\', '/')
             print("New directory path:", new_directory_path)
 
             try:
@@ -143,6 +163,8 @@ def create_directory():
     except Exception as e:
         app.logger.error(f'An error occurred: {e}')
         return jsonify({'error': f'An error occurred while trying to create the directory: {str(e)}'}), 500
+
+# This route deletes items for user.
 
 @app.route('/delete_item', methods=['POST'])
 def delete_item():
@@ -161,7 +183,8 @@ def delete_item():
             # Check if it's a file or directory and delete accordingly
             try:
                 if S_ISDIR(sftp_client.stat(item_path).st_mode):
-                    sftp_client.rmdir(item_path)  # Delete directory (ensure it's empty)
+                    # Delete directory (ensure it's empty)
+                    sftp_client.rmdir(item_path)
                 else:
                     sftp_client.remove(item_path)  # Delete file
                 return jsonify({'success': 'Item deleted successfully'})
@@ -173,14 +196,19 @@ def delete_item():
         app.logger.error(f'An error occurred: {e}')
         return jsonify({'error': 'An error occurred while trying to delete the item'}), 500
 
+# This route is returning create file page.
+
 @app.route('/create_file', methods=['GET'])
 def display_create_file():
     ssh_details = session.get('ssh_details')
     if not ssh_details:
         return render_template('error.html', error='SSH details not found in session')
 
-    current_path = request.args.get('path', ssh_details.get('current_path', ''))
+    current_path = request.args.get(
+        'path', ssh_details.get('current_path', ''))
     return render_template('create_file.html', current_path=current_path)
+
+# This route creates file for user.
 
 @app.route('/create_file', methods=['POST'])
 def create_file():
@@ -191,8 +219,10 @@ def create_file():
     try:
         file_name = request.json.get('file_name')
         # Using the current path from the request or falling back to the session's current path
-        current_path = request.json.get('current_path', ssh_details['current_path'])
-        new_file_path = os.path.join(current_path, file_name).replace('\\', '/')
+        current_path = request.json.get(
+            'current_path', ssh_details['current_path'])
+        new_file_path = os.path.join(
+            current_path, file_name).replace('\\', '/')
 
         app.logger.debug(f"Creating file at: {new_file_path}")
 
@@ -207,6 +237,8 @@ def create_file():
     except Exception as e:
         app.logger.error(f'An error occurred: {e}')
         return jsonify({'error': f'An error occurred while trying to create the file: {e}'}), 500
+
+# This route copies items.
 
 @app.route('/copy_item', methods=['POST'])
 def copy_item():
@@ -232,12 +264,15 @@ def copy_item():
                 return jsonify({'success': 'Item copied successfully', 'destination_path': destination_path})
             else:
                 error_message = stderr.read().decode()
-                app.logger.error(f'Copy command failed on remote server: {error_message}')
+                app.logger.error(
+                    f'Copy command failed on remote server: {error_message}')
                 return jsonify({'error': 'Copy command failed on remote server', 'details': error_message})
 
     except Exception as e:
         app.logger.error(f'An error occurred during the copy operation: {e}')
         return jsonify({'error': f'An error occurred: {e}'}), 500
+
+# This route moves items.
 
 @app.route('/move_item', methods=['POST'])
 def move_item():
@@ -258,13 +293,15 @@ def move_item():
             exit_status = stdout.channel.recv_exit_status()
 
             if exit_status == 0:
-                return jsonify({'success': 'Item moved successfully','destination_path':destination_path})
+                return jsonify({'success': 'Item moved successfully', 'destination_path': destination_path})
             else:
                 error_message = stderr.read().decode()
                 return jsonify({'error': 'Move command failed on remote server', 'details': error_message})
 
     except Exception as e:
         return jsonify({'error': f'An error occurred: {e}'}), 500
+
+# This route is returning edit file page.
 
 @app.route('/edit_file', methods=['GET'])
 def edit_file():
@@ -282,6 +319,8 @@ def edit_file():
     except Exception as e:
         return render_template('error.html', error=str(e))
 
+# This route saves file to the server.
+
 @app.route('/save_edited_file', methods=['POST'])
 def save_edited_file():
     ssh_details = session.get('ssh_details')
@@ -294,7 +333,7 @@ def save_edited_file():
     print('Received data:', data)  # Debugging line
 
     file_path = data.get('file_path')
-    content = data.get('content')       
+    content = data.get('content')
 
     try:
         with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
@@ -303,6 +342,9 @@ def save_edited_file():
             return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': f'An error occurred: {e}'}), 500
+    # This route is returning edit file page.
+
+# This route is returning change permissions page.
 
 @app.route('/change_permissions', methods=['GET'])
 def change_permissions():
@@ -316,10 +358,13 @@ def change_permissions():
         with get_ssh_sftp_client(ssh_details['server_address'], ssh_details['username'], ssh_details['password']) as (ssh_client, sftp_client):
             # Fetch the current permissions
             file_attr = sftp_client.stat(file_path)
-            current_permissions = oct(file_attr.st_mode)[-3:]  # Get the last three digits, which represent the file permissions
+            # Get the last three digits, which represent the file permissions
+            current_permissions = oct(file_attr.st_mode)[-3:]
             return render_template('change_permissions.html', file_path=file_path, current_permissions=current_permissions)
     except Exception as e:
         return render_template('error.html', error=str(e))
+
+# This route change permissions for items.
 
 @app.route('/set_permissions', methods=['POST'])
 def set_permissions():
@@ -340,6 +385,7 @@ def set_permissions():
     except Exception as e:
         return jsonify({'error': f'An error occurred: {e}'}), 500
 
+# This routes for resetting path and returning home route.
 
 @app.route('/reset_path')
 def reset_path():
@@ -350,6 +396,8 @@ def reset_path():
     ssh_details['current_path'] = '/home/' + ssh_details['username']
     session.modified = True
     return redirect(url_for('home'))
+
+# This route resetting the path for open route
 
 @app.route('/reset_session_path', methods=['POST'])
 def reset_session_path():

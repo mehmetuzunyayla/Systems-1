@@ -1,12 +1,14 @@
 from contextlib import contextmanager
-from flask import session
 import paramiko
+
+# Thanks to this helper function our system is dynamic to the all users.
 
 def get_user_home_directory(ssh_client):
     # Get the home directory of the connected user
     stdin, stdout, stderr = ssh_client.exec_command("echo $HOME")
     home_directory = stdout.read().decode().strip()
     return home_directory
+
 
 @contextmanager
 def get_ssh_sftp_client(server_address, username, password):
